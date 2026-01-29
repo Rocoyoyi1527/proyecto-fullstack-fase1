@@ -1,0 +1,381 @@
+{
+  "info": {
+    "name": "Proyecto Full Stack - API Tareas",
+    "description": "Colección de pruebas para la API del Proyecto Full Stack",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "1. Registrar Usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('token', response.data.token);",
+                  "    pm.environment.set('userId', response.data.usuario.id);",
+                  "    pm.collectionVariables.set('token', response.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Juan Pérez\",\n  \"email\": \"juan@example.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/registro",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "registro"]
+            },
+            "description": "Registra un nuevo usuario en el sistema"
+          }
+        },
+        {
+          "name": "2. Iniciar Sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('token', response.data.token);",
+                  "    pm.collectionVariables.set('token', response.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan@example.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Inicia sesión con credenciales de usuario"
+          }
+        },
+        {
+          "name": "3. Obtener Perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/perfil",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "perfil"]
+            },
+            "description": "Obtiene el perfil del usuario autenticado (requiere token)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tareas",
+      "item": [
+        {
+          "name": "1. Crear Tarea",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Estudiar Node.js\",\n  \"descripcion\": \"Completar el módulo de Express.js y crear una API RESTful\",\n  \"estado\": \"pendiente\",\n  \"prioridad\": \"alta\",\n  \"fechaVencimiento\": \"2025-02-15\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tareas",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas"]
+            },
+            "description": "Crea una nueva tarea (requiere autenticación)"
+          }
+        },
+        {
+          "name": "2. Obtener Todas las Tareas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tareas",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas"]
+            },
+            "description": "Obtiene todas las tareas (público - no requiere autenticación)"
+          }
+        },
+        {
+          "name": "3. Obtener Mis Tareas",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tareas/mis-tareas/todas",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas", "mis-tareas", "todas"]
+            },
+            "description": "Obtiene solo las tareas del usuario autenticado"
+          }
+        },
+        {
+          "name": "4. Obtener Tarea por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tareas/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "TAREA_ID_AQUI"
+                }
+              ]
+            },
+            "description": "Obtiene una tarea específica por su ID"
+          }
+        },
+        {
+          "name": "5. Actualizar Tarea",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Estudiar Node.js Avanzado\",\n  \"descripcion\": \"Completar módulos de Express.js, MongoDB y despliegue\",\n  \"estado\": \"en_progreso\",\n  \"prioridad\": \"alta\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tareas/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "TAREA_ID_AQUI"
+                }
+              ]
+            },
+            "description": "Actualiza una tarea existente (solo el propietario)"
+          }
+        },
+        {
+          "name": "6. Eliminar Tarea",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tareas/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "TAREA_ID_AQUI"
+                }
+              ]
+            },
+            "description": "Elimina una tarea (solo el propietario)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tests Completos",
+      "item": [
+        {
+          "name": "Test 1: Crear múltiples tareas",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Tarea de Matemáticas\",\n  \"descripcion\": \"Resolver ejercicios del capítulo 5\",\n  \"estado\": \"pendiente\",\n  \"prioridad\": \"media\",\n  \"fechaVencimiento\": \"2025-02-20\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tareas",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas"]
+            }
+          }
+        },
+        {
+          "name": "Test 2: Error sin autenticación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Esta tarea fallará\",\n  \"descripcion\": \"Sin token de autenticación\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tareas",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas"]
+            },
+            "description": "Este request debe fallar con 401 Unauthorized"
+          }
+        },
+        {
+          "name": "Test 3: Validación de datos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"\",\n  \"descripcion\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tareas",
+              "host": ["{{baseUrl}}"],
+              "path": ["tareas"]
+            },
+            "description": "Este request debe fallar con 400 Bad Request (validación)"
+          }
+        }
+      ]
+    }
+  ]
+}

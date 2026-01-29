@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Gestor de Tareas</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>📚 Gestor de Tareas</h1>
+                <p>Sistema de Gestión Educativa</p>
+            </div>
+
+            <!-- Mensajes de error/éxito -->
+            <div id="message" class="message" style="display: none;"></div>
+
+            <!-- Tabs para Login/Registro -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="mostrarTab('login')">Iniciar Sesión</button>
+                <button class="tab-button" onclick="mostrarTab('registro')">Registrarse</button>
+            </div>
+
+            <!-- Formulario de Login -->
+            <div id="login-form" class="form-container active">
+                <form onsubmit="iniciarSesion(event)">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required placeholder="tu@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                </form>
+            </div>
+
+            <!-- Formulario de Registro -->
+            <div id="registro-form" class="form-container">
+                <form onsubmit="registrarUsuario(event)">
+                    <div class="form-group">
+                        <label for="registro-nombre">Nombre Completo</label>
+                        <input type="text" id="registro-nombre" required placeholder="Juan Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label for="registro-email">Email</label>
+                        <input type="email" id="registro-email" required placeholder="tu@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="registro-password">Contraseña</label>
+                        <input type="password" id="registro-password" required minlength="6" placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Registrarse</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>
