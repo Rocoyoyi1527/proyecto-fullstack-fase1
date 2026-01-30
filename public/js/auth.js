@@ -1,5 +1,8 @@
 // Configuración de la API
-const API_URL = 'http://localhost:3000/api';
+// Detecta automáticamente si estamos en producción o desarrollo
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api'
+  : `${window.location.protocol}//${window.location.host}/api`;
 
 // Cambiar entre tabs de login y registro
 function mostrarTab(tab) {
