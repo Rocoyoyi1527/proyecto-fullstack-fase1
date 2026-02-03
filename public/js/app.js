@@ -12,6 +12,9 @@ let filtroCategoriaActual = 'todas';
 window.addEventListener('DOMContentLoaded', () => {
     verificarAutenticacion();
     cargarTareas();
+    setTimeout(() => {
+        cargarEstadisticas();
+    }, 1000);
 });
 
 // Verificar si el usuario está autenticado
@@ -68,7 +71,7 @@ async function cargarTareas() {
 
         if (data.success) {
             tareasGlobales = data.data.tareas;
-            mostrarTareas(tareasGlobales);
+            aplicarFiltros();
         } else {
             listaTareas.innerHTML = '<p class="loading">Error al cargar las tareas</p>';
         }
@@ -76,6 +79,32 @@ async function cargarTareas() {
         console.error('Error:', error);
         listaTareas.innerHTML = '<p class="loading">Error de conexión con el servidor</p>';
     }
+}
+
+// Obtener icono de categoría
+function obtenerIconoCategoria(categoria) {
+    const iconos = {
+        'trabajo': '💼',
+        'estudio': '📚',
+        'personal': '👤',
+        'hogar': '🏠',
+        'salud': '💚',
+        'otro': '📋'
+    };
+    return iconos[categoria] || '📋';
+}
+
+// Obtener nombre de categoría
+function obtenerNombreCategoria(categoria) {
+    const nombres = {
+        'trabajo': 'Trabajo',
+        'estudio': 'Estudio',
+        'personal': 'Personal',
+        'hogar': 'Hogar',
+        'salud': 'Salud',
+        'otro': 'Otro'
+    };
+    return nombres[categoria] || 'Otro';
 }
 
 // Mostrar tareas en el DOM
@@ -87,59 +116,52 @@ function mostrarTareas(tareas) {
         return;
     }
 
-    listaTareas.innerHTML = tareas.map(tarea => `
-        <div class="tarea-item ${tarea.estado}" data-id="${tarea._id}">
-            <div class="tarea-header">
-                <div>
-                    <div class="tarea-titulo">${tarea.titulo}</div>
-                    <div class="tarea-meta">
-                        <span>👤 ${tarea.usuario.nombre}</span>
-                        ${tarea.fechaVencimiento ? `<span>📅 ${formatearFecha(tarea.fechaVencimiento)}</span>` : ''}
+    listaTareas.innerHTML = tareas.map(tarea => {
+        const fechaVencimiento = tarea.fechaVencimiento 
+            ? new Date(tarea.fechaVencimiento).toLocaleDateString('es-ES')
+            : 'Sin fecha';
+
+        const badgeEstado = tarea.estado === 'pendiente' ? 'Pendiente' 
+            : tarea.estado === 'en_progreso' ? 'En Progreso' 
+            : 'Completada';
+
+        const badgePrioridad = `badge-prioridad-${tarea.prioridad}`;
+
+        // Etiquetas
+        const etiquetasHTML = tarea.etiquetas && tarea.etiquetas.length > 0
+            ? tarea.etiquetas.map(etiqueta => 
+                `<span class="badge badge-etiqueta">#${etiqueta}</span>`
+              ).join('')
+            : '';
+
+        return `
+            <div class="tarea-item ${tarea.estado}">
+                <div class="tarea-header">
+                    <div>
+                        <h3 class="tarea-titulo">${tarea.titulo}</h3>
+                        <div class="tarea-badges">
+                            <span class="badge ${badgePrioridad}">${tarea.prioridad.toUpperCase()}</span>
+                            <span class="badge badge-estado">${badgeEstado}</span>
+                            <span class="badge badge-categoria">${obtenerIconoCategoria(tarea.categoria)} ${obtenerNombreCategoria(tarea.categoria)}</span>
+                            ${etiquetasHTML}
+                        </div>
                     </div>
                 </div>
-                <div class="tarea-badges">
-                    <span class="badge badge-prioridad-${tarea.prioridad}">${tarea.prioridad}</span>
-                    <span class="badge badge-estado">${formatearEstado(tarea.estado)}</span>
+                <p class="tarea-descripcion">${tarea.descripcion}</p>
+                <div class="tarea-meta">
+                    <span>📅 Vence: ${fechaVencimiento}</span>
+                    <span>👤 ${tarea.usuario.nombre}</span>
+                </div>
+                <div class="tarea-acciones">
+                    <button onclick="editarTarea('${tarea._id}')" class="btn btn-small btn-editar">✏️ Editar</button>
+                    <button onclick="eliminarTarea('${tarea._id}')" class="btn btn-small btn-eliminar">🗑️ Eliminar</button>
                 </div>
             </div>
-            <div class="tarea-descripcion">${tarea.descripcion}</div>
-            ${esUsuarioPropietario(tarea) ? `
-                <div class="tarea-acciones">
-                    <button class="btn btn-small btn-editar" onclick="editarTarea('${tarea._id}')">✏️ Editar</button>
-                    <button class="btn btn-small btn-eliminar" onclick="eliminarTarea('${tarea._id}')">🗑️ Eliminar</button>
-                </div>
-            ` : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-// Verificar si el usuario es propietario de la tarea
-function esUsuarioPropietario(tarea) {
-    const usuario = JSON.parse(localStorage.getItem('usuario'));
-    return tarea.usuario._id === usuario.id;
-}
-
-// Formatear estado
-function formatearEstado(estado) {
-    const estados = {
-        'pendiente': 'Pendiente',
-        'en_progreso': 'En Progreso',
-        'completada': 'Completada'
-    };
-    return estados[estado] || estado;
-}
-
-// Formatear fecha
-function formatearFecha(fecha) {
-    const date = new Date(fecha);
-    return date.toLocaleDateString('es-ES', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-    });
-}
-
-// Crear tarea
+// Crear nueva tarea
 async function crearTarea(event) {
     event.preventDefault();
 
@@ -148,13 +170,22 @@ async function crearTarea(event) {
     const descripcion = document.getElementById('descripcion').value;
     const estado = document.getElementById('estado').value;
     const prioridad = document.getElementById('prioridad').value;
+    const categoria = document.getElementById('categoria').value;
     const fechaVencimiento = document.getElementById('fechaVencimiento').value;
+    const etiquetasInput = document.getElementById('etiquetas').value;
+
+    // Procesar etiquetas
+    const etiquetas = etiquetasInput
+        ? etiquetasInput.split(',').map(e => e.trim()).filter(e => e.length > 0)
+        : [];
 
     const tareaData = {
         titulo,
         descripcion,
         estado,
-        prioridad
+        prioridad,
+        categoria,
+        etiquetas
     };
 
     if (fechaVencimiento) {
@@ -177,6 +208,7 @@ async function crearTarea(event) {
             mostrarMensaje('✅ Tarea creada exitosamente', 'success');
             document.getElementById('form-nueva-tarea').reset();
             cargarTareas();
+            cargarEstadisticas(); // Actualizar estadísticas
         } else {
             const errorMsg = data.errors ? data.errors.join(', ') : data.message;
             mostrarMensaje(errorMsg, 'error');
@@ -187,20 +219,26 @@ async function crearTarea(event) {
     }
 }
 
-// Editar tarea (simplificado - puedes expandir con un modal)
+// Editar tarea
 async function editarTarea(id) {
     const tarea = tareasGlobales.find(t => t._id === id);
-    if (!tarea) return;
+    
+    if (!tarea) {
+        mostrarMensaje('Tarea no encontrada', 'error');
+        return;
+    }
 
-    // Rellenar el formulario con los datos de la tarea
+    // Llenar el formulario con los datos de la tarea
     document.getElementById('titulo').value = tarea.titulo;
     document.getElementById('descripcion').value = tarea.descripcion;
     document.getElementById('estado').value = tarea.estado;
     document.getElementById('prioridad').value = tarea.prioridad;
+    document.getElementById('categoria').value = tarea.categoria || 'otro';
+    document.getElementById('etiquetas').value = tarea.etiquetas ? tarea.etiquetas.join(', ') : '';
     
     if (tarea.fechaVencimiento) {
-        const fecha = new Date(tarea.fechaVencimiento);
-        document.getElementById('fechaVencimiento').value = fecha.toISOString().split('T')[0];
+        const fecha = new Date(tarea.fechaVencimiento).toISOString().split('T')[0];
+        document.getElementById('fechaVencimiento').value = fecha;
     }
 
     // Cambiar el comportamiento del formulario
@@ -208,7 +246,7 @@ async function editarTarea(id) {
     form.onsubmit = async (e) => {
         e.preventDefault();
         await actualizarTarea(id);
-        form.onsubmit = crearTarea;
+        form.onsubmit = crearTarea; // Volver al comportamiento original
     };
 
     // Scroll al formulario
@@ -223,13 +261,22 @@ async function actualizarTarea(id) {
     const descripcion = document.getElementById('descripcion').value;
     const estado = document.getElementById('estado').value;
     const prioridad = document.getElementById('prioridad').value;
+    const categoria = document.getElementById('categoria').value;
     const fechaVencimiento = document.getElementById('fechaVencimiento').value;
+    const etiquetasInput = document.getElementById('etiquetas').value;
+
+    // Procesar etiquetas
+    const etiquetas = etiquetasInput
+        ? etiquetasInput.split(',').map(e => e.trim()).filter(e => e.length > 0)
+        : [];
 
     const tareaData = {
         titulo,
         descripcion,
         estado,
-        prioridad
+        prioridad,
+        categoria,
+        etiquetas
     };
 
     if (fechaVencimiento) {
@@ -252,6 +299,7 @@ async function actualizarTarea(id) {
             mostrarMensaje('✅ Tarea actualizada exitosamente', 'success');
             document.getElementById('form-nueva-tarea').reset();
             cargarTareas();
+            cargarEstadisticas(); // Actualizar estadísticas
         } else {
             const errorMsg = data.errors ? data.errors.join(', ') : data.message;
             mostrarMensaje(errorMsg, 'error');
@@ -283,6 +331,7 @@ async function eliminarTarea(id) {
         if (data.success) {
             mostrarMensaje('🗑️ Tarea eliminada exitosamente', 'success');
             cargarTareas();
+            cargarEstadisticas(); // Actualizar estadísticas
         } else {
             mostrarMensaje(data.message, 'error');
         }
@@ -292,20 +341,42 @@ async function eliminarTarea(id) {
     }
 }
 
-// Filtrar tareas
-function filtrarTareas(filtro) {
-    filtroActual = filtro;
+// Filtrar por estado
+function filtrarPorEstado(estado) {
+    filtroEstadoActual = estado;
 
-    // Actualizar botones de filtro
-    const botones = document.querySelectorAll('.btn-filter');
+    // Actualizar botones de filtro de estado
+    const botones = document.querySelectorAll('[data-filtro-tipo="estado"]');
     botones.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
 
-    // Filtrar y mostrar tareas
+    aplicarFiltros();
+}
+
+// Filtrar por categoría
+function filtrarPorCategoria(categoria) {
+    filtroCategoriaActual = categoria;
+
+    // Actualizar botones de filtro de categoría
+    const botones = document.querySelectorAll('[data-filtro-tipo="categoria"]');
+    botones.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    aplicarFiltros();
+}
+
+// Aplicar todos los filtros
+function aplicarFiltros() {
     let tareasFiltradas = tareasGlobales;
 
-    if (filtro !== 'todas') {
-        tareasFiltradas = tareasGlobales.filter(tarea => tarea.estado === filtro);
+    // Filtrar por estado
+    if (filtroEstadoActual !== 'todas') {
+        tareasFiltradas = tareasFiltradas.filter(tarea => tarea.estado === filtroEstadoActual);
+    }
+
+    // Filtrar por categoría
+    if (filtroCategoriaActual !== 'todas') {
+        tareasFiltradas = tareasFiltradas.filter(tarea => tarea.categoria === filtroCategoriaActual);
     }
 
     mostrarTareas(tareasFiltradas);
@@ -315,13 +386,6 @@ function filtrarTareas(filtro) {
 
 // Variables para almacenar los gráficos
 let chartEstado, chartPrioridad, chartPorDia, chartSemanal;
-
-// Cargar estadísticas al iniciar
-window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        cargarEstadisticas();
-    }, 1000); // Esperar 1 segundo después de cargar tareas
-});
 
 // Cargar estadísticas desde el backend
 async function cargarEstadisticas() {
@@ -397,9 +461,9 @@ function generarGraficoEstado(porEstado) {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        padding: 15,
+                        padding: 10,
                         font: {
-                            size: 12
+                            size: 11
                         }
                     }
                 },
@@ -454,9 +518,9 @@ function generarGraficoPrioridad(porPrioridad) {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        padding: 15,
+                        padding: 10,
                         font: {
-                            size: 12
+                            size: 11
                         }
                     }
                 },
@@ -498,7 +562,7 @@ function generarGraficoPorDia(porDiaSemana) {
                 backgroundColor: '#6366f1',
                 borderColor: '#4f46e5',
                 borderWidth: 1,
-                borderRadius: 8
+                borderRadius: 6
             }]
         },
         options: {
@@ -508,7 +572,17 @@ function generarGraficoPorDia(porDiaSemana) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 10
+                        }
                     }
                 }
             },
@@ -549,11 +623,11 @@ function generarGraficoSemanal(tareasCompletadasPorSemana) {
                 data: completadas,
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderWidth: 3,
+                borderWidth: 2,
                 fill: true,
                 tension: 0.4,
-                pointRadius: 5,
-                pointHoverRadius: 7,
+                pointRadius: 4,
+                pointHoverRadius: 6,
                 pointBackgroundColor: '#10b981',
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2
@@ -566,14 +640,29 @@ function generarGraficoSemanal(tareasCompletadasPorSemana) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 10
+                        }
                     }
                 }
             },
             plugins: {
                 legend: {
                     display: true,
-                    position: 'top'
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 11
+                        }
+                    }
                 },
                 tooltip: {
                     callbacks: {
