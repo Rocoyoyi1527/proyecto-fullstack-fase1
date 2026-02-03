@@ -5,7 +5,8 @@ const API_URL = window.location.hostname === 'localhost'
   : `${window.location.protocol}//${window.location.host}/api`;
 
 let tareasGlobales = [];
-let filtroActual = 'todas';
+let filtroEstadoActual = 'todas';
+let filtroCategoriaActual = 'todas';
 
 // Verificar autenticación al cargar la página
 window.addEventListener('DOMContentLoaded', () => {

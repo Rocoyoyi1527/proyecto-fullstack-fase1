@@ -23,6 +23,15 @@ const taskSchema = new mongoose.Schema({
     enum: ['baja', 'media', 'alta'],
     default: 'media'
   },
+  categoria: {
+    type: String,
+    enum: ['trabajo', 'estudio', 'personal', 'hogar', 'salud', 'otro'],
+    default: 'otro'
+  },
+  etiquetas: {
+    type: [String],
+    default: []
+  },
   fechaVencimiento: {
     type: Date
   },

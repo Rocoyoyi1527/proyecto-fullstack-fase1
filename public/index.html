@@ -67,25 +67,19 @@
             <!-- Gráficos -->
             <div class="charts-grid">
                 <div class="card chart-container">
-                    <h4>Estado de Tareas</h4>
+                    <h4>📊 Estado de Tareas</h4>
                     <canvas id="chartEstado"></canvas>
                 </div>
                 <div class="card chart-container">
-                    <h4>Prioridad de Tareas</h4>
+                    <h4>🎯 Prioridad</h4>
                     <canvas id="chartPrioridad"></canvas>
                 </div>
-            </div>
-
-            <div class="charts-grid">
-                <div class="card chart-container-wide">
-                    <h4>Tareas Creadas por Día</h4>
+                <div class="card chart-container">
+                    <h4>📅 Por Día</h4>
                     <canvas id="chartPorDia"></canvas>
                 </div>
-            </div>
-
-            <div class="charts-grid">
-                <div class="card chart-container-wide">
-                    <h4>Progreso Semanal (Últimas 4 Semanas)</h4>
+                <div class="card chart-container">
+                    <h4>📈 Progreso Semanal</h4>
                     <canvas id="chartSemanal"></canvas>
                 </div>
             </div>
@@ -113,12 +107,29 @@
                         <input type="text" id="titulo" required maxlength="100" placeholder="Título de la tarea">
                     </div>
                     <div class="form-group">
+                        <label for="categoria">Categoría</label>
+                        <select id="categoria">
+                            <option value="trabajo">💼 Trabajo</option>
+                            <option value="estudio">📚 Estudio</option>
+                            <option value="personal">👤 Personal</option>
+                            <option value="hogar">🏠 Hogar</option>
+                            <option value="salud">💚 Salud</option>
+                            <option value="otro" selected>📋 Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label for="prioridad">Prioridad</label>
                         <select id="prioridad">
                             <option value="baja">Baja</option>
                             <option value="media" selected>Media</option>
                             <option value="alta">Alta</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="etiquetas">Etiquetas (separadas por comas)</label>
+                        <input type="text" id="etiquetas" placeholder="urgente, importante, revisar">
                     </div>
                 </div>
                 <div class="form-group">
@@ -144,11 +155,25 @@
         </div>
 
         <!-- Filtros -->
-        <div class="filters">
-            <button class="btn btn-filter active" onclick="filtrarTareas('todas')">Todas</button>
-            <button class="btn btn-filter" onclick="filtrarTareas('pendiente')">Pendientes</button>
-            <button class="btn btn-filter" onclick="filtrarTareas('en_progreso')">En Progreso</button>
-            <button class="btn btn-filter" onclick="filtrarTareas('completada')">Completadas</button>
+        <div class="filters-section">
+            <div class="filters-label">📋 Filtrar por Estado:</div>
+            <div class="filters">
+                <button class="btn btn-filter active" data-filtro-tipo="estado" onclick="filtrarPorEstado('todas')">Todas</button>
+                <button class="btn btn-filter" data-filtro-tipo="estado" onclick="filtrarPorEstado('pendiente')">Pendientes</button>
+                <button class="btn btn-filter" data-filtro-tipo="estado" onclick="filtrarPorEstado('en_progreso')">En Progreso</button>
+                <button class="btn btn-filter" data-filtro-tipo="estado" onclick="filtrarPorEstado('completada')">Completadas</button>
+            </div>
+            
+            <div class="filters-label">🏷️ Filtrar por Categoría:</div>
+            <div class="filters">
+                <button class="btn btn-filter-cat active" data-filtro-tipo="categoria" onclick="filtrarPorCategoria('todas')">✨ Todas</button>
+                <button class="btn btn-filter-cat" data-filtro-tipo="categoria" onclick="filtrarPorCategoria('trabajo')">💼 Trabajo</button>
+                <button class="btn btn-filter-cat" data-filtro-tipo="categoria" onclick="filtrarPorCategoria('estudio')">📚 Estudio</button>
+                <button class="btn btn-filter-cat" data-filtro-tipo="categoria" onclick="filtrarPorCategoria('personal')">👤 Personal</button>
+                <button class="btn btn-filter-cat" data-filtro-tipo="categoria" onclick="filtrarPorCategoria('hogar')">🏠 Hogar</button>
+                <button class="btn btn-filter-cat" data-filtro-tipo="categoria" onclick="filtrarPorCategoria('salud')">💚 Salud</button>
+                <button class="btn btn-filter-cat" data-filtro-tipo="categoria" onclick="filtrarPorCategoria('otro')">📋 Otro</button>
+            </div>
         </div>
 
         <!-- Lista de tareas -->

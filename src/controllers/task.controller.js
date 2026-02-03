@@ -239,6 +239,16 @@ const obtenerEstadisticas = async (req, res, next) => {
       ? Math.round((porEstado.completada / totalTareas) * 100)
       : 0;
 
+    // Contar por categoría
+    const porCategoria = {
+      trabajo: todasLasTareas.filter(t => t.categoria === 'trabajo').length,
+      estudio: todasLasTareas.filter(t => t.categoria === 'estudio').length,
+      personal: todasLasTareas.filter(t => t.categoria === 'personal').length,
+      hogar: todasLasTareas.filter(t => t.categoria === 'hogar').length,
+      salud: todasLasTareas.filter(t => t.categoria === 'salud').length,
+      otro: todasLasTareas.filter(t => t.categoria === 'otro').length
+    };
+
     res.json({
       success: true,
       data: {
@@ -253,6 +263,7 @@ const obtenerEstadisticas = async (req, res, next) => {
         },
         porEstado,
         porPrioridad,
+        porCategoria,
         porDiaSemana,
         tareasCompletadasPorSemana
       }
