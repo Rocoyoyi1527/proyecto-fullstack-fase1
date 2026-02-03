@@ -29,7 +29,10 @@
         <div class="dashboard-section">
             <div class="dashboard-header">
                 <h3>📊 Dashboard de Productividad</h3>
-                <button onclick="cargarEstadisticas()" class="btn btn-secondary">🔄 Actualizar</button>
+                <div class="dashboard-actions">
+                    <button onclick="abrirModalTarea()" class="btn btn-primary">➕ Nueva Tarea</button>
+                    <button onclick="cargarEstadisticas()" class="btn btn-secondary">🔄 Actualizar</button>
+                </div>
             </div>
 
             <!-- Tarjetas de estadísticas rápidas -->
@@ -97,61 +100,69 @@
             </div>
         </div>
 
-        <!-- Sección para crear tarea -->
-        <div class="card">
-            <h3>➕ Nueva Tarea</h3>
-            <form id="form-nueva-tarea" onsubmit="crearTarea(event)">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="titulo">Título</label>
-                        <input type="text" id="titulo" required maxlength="100" placeholder="Título de la tarea">
-                    </div>
-                    <div class="form-group">
-                        <label for="categoria">Categoría</label>
-                        <select id="categoria">
-                            <option value="trabajo">💼 Trabajo</option>
-                            <option value="estudio">📚 Estudio</option>
-                            <option value="personal">👤 Personal</option>
-                            <option value="hogar">🏠 Hogar</option>
-                            <option value="salud">💚 Salud</option>
-                            <option value="otro" selected>📋 Otro</option>
-                        </select>
-                    </div>
+        <!-- Modal para crear/editar tarea -->
+        <div id="modalTarea" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-titulo">➕ Nueva Tarea</h3>
+                    <button onclick="cerrarModalTarea()" class="btn-close">×</button>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="prioridad">Prioridad</label>
-                        <select id="prioridad">
-                            <option value="baja">Baja</option>
-                            <option value="media" selected>Media</option>
-                            <option value="alta">Alta</option>
-                        </select>
+                <form id="form-nueva-tarea" onsubmit="crearTarea(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="titulo">Título</label>
+                            <input type="text" id="titulo" required maxlength="100" placeholder="Título de la tarea">
+                        </div>
+                        <div class="form-group">
+                            <label for="categoria">Categoría</label>
+                            <select id="categoria">
+                                <option value="trabajo">💼 Trabajo</option>
+                                <option value="estudio">📚 Estudio</option>
+                                <option value="personal">👤 Personal</option>
+                                <option value="hogar">🏠 Hogar</option>
+                                <option value="salud">💚 Salud</option>
+                                <option value="otro" selected>📋 Otro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="prioridad">Prioridad</label>
+                            <select id="prioridad">
+                                <option value="baja">Baja</option>
+                                <option value="media" selected>Media</option>
+                                <option value="alta">Alta</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="etiquetas">Etiquetas (separadas por comas)</label>
+                            <input type="text" id="etiquetas" placeholder="urgente, importante, revisar">
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label for="etiquetas">Etiquetas (separadas por comas)</label>
-                        <input type="text" id="etiquetas" placeholder="urgente, importante, revisar">
+                        <label for="descripcion">Descripción</label>
+                        <textarea id="descripcion" required maxlength="500" rows="3" placeholder="Describe tu tarea..."></textarea>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="descripcion">Descripción</label>
-                    <textarea id="descripcion" required maxlength="500" rows="3" placeholder="Describe tu tarea..."></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="estado">Estado</label>
-                        <select id="estado">
-                            <option value="pendiente" selected>Pendiente</option>
-                            <option value="en_progreso">En Progreso</option>
-                            <option value="completada">Completada</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="estado">Estado</label>
+                            <select id="estado">
+                                <option value="pendiente" selected>Pendiente</option>
+                                <option value="en_progreso">En Progreso</option>
+                                <option value="completada">Completada</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="fechaVencimiento">Fecha de Vencimiento</label>
+                            <input type="date" id="fechaVencimiento">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="fechaVencimiento">Fecha de Vencimiento</label>
-                        <input type="date" id="fechaVencimiento">
+                    <div class="modal-footer">
+                        <button type="button" onclick="cerrarModalTarea()" class="btn btn-secondary">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-tarea">Crear Tarea</button>
                     </div>
-                </div>
-                <button type="submit" class="btn btn-primary">Crear Tarea</button>
-            </form>
+                </form>
+            </div>
         </div>
 
         <!-- Filtros -->

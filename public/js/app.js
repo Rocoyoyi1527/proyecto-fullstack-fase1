@@ -15,6 +15,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         cargarEstadisticas();
     }, 1000);
+    solicitarPermisoNotificaciones();
 });
 
 // Verificar si el usuario está autenticado
@@ -206,7 +207,9 @@ async function crearTarea(event) {
 
         if (data.success) {
             mostrarMensaje('✅ Tarea creada exitosamente', 'success');
+            enviarNotificacion('✅ Tarea Creada', `"${titulo}" fue creada exitosamente`);
             document.getElementById('form-nueva-tarea').reset();
+            cerrarModalTarea();
             cargarTareas();
             cargarEstadisticas(); // Actualizar estadísticas
         } else {
@@ -228,6 +231,11 @@ async function editarTarea(id) {
         return;
     }
 
+    // Abrir modal
+    const modal = document.getElementById('modalTarea');
+    const modalTitulo = document.getElementById('modal-titulo');
+    const btnSubmit = document.getElementById('btn-submit-tarea');
+
     // Llenar el formulario con los datos de la tarea
     document.getElementById('titulo').value = tarea.titulo;
     document.getElementById('descripcion').value = tarea.descripcion;
@@ -241,17 +249,21 @@ async function editarTarea(id) {
         document.getElementById('fechaVencimiento').value = fecha;
     }
 
+    // Configurar modal para edición
+    modalTitulo.textContent = '✏️ Editar Tarea';
+    btnSubmit.textContent = 'Guardar Cambios';
+
     // Cambiar el comportamiento del formulario
     const form = document.getElementById('form-nueva-tarea');
     form.onsubmit = async (e) => {
         e.preventDefault();
         await actualizarTarea(id);
+        cerrarModalTarea();
         form.onsubmit = crearTarea; // Volver al comportamiento original
     };
 
-    // Scroll al formulario
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    mostrarMensaje('📝 Editando tarea. Modifica los campos y guarda los cambios.', 'success');
+    // Mostrar modal
+    modal.classList.add('show');
 }
 
 // Actualizar tarea
@@ -297,6 +309,7 @@ async function actualizarTarea(id) {
 
         if (data.success) {
             mostrarMensaje('✅ Tarea actualizada exitosamente', 'success');
+            enviarNotificacion('✏️ Tarea Actualizada', `"${titulo}" fue actualizada`);
             document.getElementById('form-nueva-tarea').reset();
             cargarTareas();
             cargarEstadisticas(); // Actualizar estadísticas
@@ -330,6 +343,7 @@ async function eliminarTarea(id) {
 
         if (data.success) {
             mostrarMensaje('🗑️ Tarea eliminada exitosamente', 'success');
+            enviarNotificacion('🗑️ Tarea Eliminada', 'La tarea fue eliminada correctamente');
             cargarTareas();
             cargarEstadisticas(); // Actualizar estadísticas
         } else {
@@ -684,6 +698,10 @@ function mostrarAlertas(resumen) {
         alertVencidas.style.display = 'flex';
         alertVencidas.querySelector('.alert-text').textContent = 
             `Tienes ${resumen.vencidas} tarea${resumen.vencidas > 1 ? 's' : ''} vencida${resumen.vencidas > 1 ? 's' : ''}. ¡Revisa tu lista!`;
+        
+        // Enviar notificación
+        enviarNotificacion('⚠️ Tareas Vencidas', 
+            `Tienes ${resumen.vencidas} tarea${resumen.vencidas > 1 ? 's' : ''} vencida${resumen.vencidas > 1 ? 's' : ''}`);
     } else {
         alertVencidas.style.display = 'none';
     }
@@ -696,5 +714,80 @@ function mostrarAlertas(resumen) {
             `${resumen.porVencer} tarea${resumen.porVencer > 1 ? 's' : ''} vencerá${resumen.porVencer > 1 ? 'n' : ''} en los próximos 7 días.`;
     } else {
         alertPorVencer.style.display = 'none';
+    }
+}
+
+// ==================== MODAL ====================
+
+// Abrir modal para crear tarea
+function abrirModalTarea() {
+    const modal = document.getElementById('modalTarea');
+    const modalTitulo = document.getElementById('modal-titulo');
+    const btnSubmit = document.getElementById('btn-submit-tarea');
+    
+    // Limpiar formulario
+    document.getElementById('form-nueva-tarea').reset();
+    
+    // Configurar para crear
+    modalTitulo.textContent = '➕ Nueva Tarea';
+    btnSubmit.textContent = 'Crear Tarea';
+    
+    // Restaurar comportamiento original del formulario
+    const form = document.getElementById('form-nueva-tarea');
+    form.onsubmit = crearTarea;
+    
+    // Mostrar modal
+    modal.classList.add('show');
+}
+
+// Cerrar modal
+function cerrarModalTarea() {
+    const modal = document.getElementById('modalTarea');
+    modal.classList.remove('show');
+}
+
+// Cerrar modal al hacer click fuera
+window.onclick = function(event) {
+    const modal = document.getElementById('modalTarea');
+    if (event.target === modal) {
+        cerrarModalTarea();
+    }
+}
+
+// ==================== NOTIFICACIONES ====================
+
+// Solicitar permiso para notificaciones
+function solicitarPermisoNotificaciones() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                console.log('✅ Notificaciones habilitadas');
+                mostrarMensaje('🔔 Notificaciones habilitadas correctamente', 'success');
+            }
+        });
+    }
+}
+
+// Enviar notificación
+function enviarNotificacion(titulo, mensaje, icono = '📋') {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        const notification = new Notification(titulo, {
+            body: mensaje,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">' + icono + '</text></svg>',
+            badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📋</text></svg>',
+            tag: 'tarea-notification',
+            requireInteraction: false,
+            silent: false
+        });
+
+        notification.onclick = function() {
+            window.focus();
+            notification.close();
+        };
+
+        // Auto-cerrar después de 5 segundos
+        setTimeout(() => {
+            notification.close();
+        }, 5000);
     }
 }
