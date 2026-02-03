@@ -309,3 +309,302 @@ function filtrarTareas(filtro) {
 
     mostrarTareas(tareasFiltradas);
 }
+
+// ==================== DASHBOARD CON GRÁFICAS ====================
+
+// Variables para almacenar los gráficos
+let chartEstado, chartPrioridad, chartPorDia, chartSemanal;
+
+// Cargar estadísticas al iniciar
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        cargarEstadisticas();
+    }, 1000); // Esperar 1 segundo después de cargar tareas
+});
+
+// Cargar estadísticas desde el backend
+async function cargarEstadisticas() {
+    const token = obtenerToken();
+
+    try {
+        const response = await fetch(`${API_URL}/tareas/estadisticas/resumen`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            actualizarTarjetasEstadisticas(data.data.resumen);
+            generarGraficos(data.data);
+            mostrarAlertas(data.data.resumen);
+        }
+    } catch (error) {
+        console.error('Error al cargar estadísticas:', error);
+    }
+}
+
+// Actualizar tarjetas de estadísticas rápidas
+function actualizarTarjetasEstadisticas(resumen) {
+    document.getElementById('stat-total').textContent = resumen.total;
+    document.getElementById('stat-completadas').textContent = resumen.completadas;
+    document.getElementById('stat-pendientes').textContent = resumen.pendientes;
+    document.getElementById('stat-tasa').textContent = `${resumen.tasaCompletado}%`;
+}
+
+// Generar todos los gráficos
+function generarGraficos(data) {
+    generarGraficoEstado(data.porEstado);
+    generarGraficoPrioridad(data.porPrioridad);
+    generarGraficoPorDia(data.porDiaSemana);
+    generarGraficoSemanal(data.tareasCompletadasPorSemana);
+}
+
+// Gráfico de Estado (Dona)
+function generarGraficoEstado(porEstado) {
+    const ctx = document.getElementById('chartEstado');
+    
+    // Destruir gráfico anterior si existe
+    if (chartEstado) {
+        chartEstado.destroy();
+    }
+
+    chartEstado = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendientes', 'En Progreso', 'Completadas'],
+            datasets: [{
+                data: [
+                    porEstado.pendiente,
+                    porEstado.en_progreso,
+                    porEstado.completada
+                ],
+                backgroundColor: [
+                    '#f59e0b', // Amarillo (warning)
+                    '#6366f1', // Azul (primary)
+                    '#10b981'  // Verde (success)
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Gráfico de Prioridad (Dona)
+function generarGraficoPrioridad(porPrioridad) {
+    const ctx = document.getElementById('chartPrioridad');
+    
+    // Destruir gráfico anterior si existe
+    if (chartPrioridad) {
+        chartPrioridad.destroy();
+    }
+
+    chartPrioridad = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Baja', 'Media', 'Alta'],
+            datasets: [{
+                data: [
+                    porPrioridad.baja,
+                    porPrioridad.media,
+                    porPrioridad.alta
+                ],
+                backgroundColor: [
+                    '#3b82f6', // Azul
+                    '#f59e0b', // Amarillo
+                    '#ef4444'  // Rojo
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Gráfico por Día de la Semana (Barras)
+function generarGraficoPorDia(porDiaSemana) {
+    const ctx = document.getElementById('chartPorDia');
+    
+    // Destruir gráfico anterior si existe
+    if (chartPorDia) {
+        chartPorDia.destroy();
+    }
+
+    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const valores = dias.map(dia => porDiaSemana[dia]);
+
+    chartPorDia = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dias,
+            datasets: [{
+                label: 'Tareas Creadas',
+                data: valores,
+                backgroundColor: '#6366f1',
+                borderColor: '#4f46e5',
+                borderWidth: 1,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Tareas: ${context.parsed.y}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Gráfico Semanal (Líneas)
+function generarGraficoSemanal(tareasCompletadasPorSemana) {
+    const ctx = document.getElementById('chartSemanal');
+    
+    // Destruir gráfico anterior si existe
+    if (chartSemanal) {
+        chartSemanal.destroy();
+    }
+
+    const semanas = tareasCompletadasPorSemana.map(item => item.semana);
+    const completadas = tareasCompletadasPorSemana.map(item => item.completadas);
+
+    chartSemanal = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: semanas,
+            datasets: [{
+                label: 'Tareas Completadas',
+                data: completadas,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#10b981',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Completadas: ${context.parsed.y}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Mostrar alertas
+function mostrarAlertas(resumen) {
+    // Alerta de tareas vencidas
+    const alertVencidas = document.getElementById('alert-vencidas');
+    if (resumen.vencidas > 0) {
+        alertVencidas.style.display = 'flex';
+        alertVencidas.querySelector('.alert-text').textContent = 
+            `Tienes ${resumen.vencidas} tarea${resumen.vencidas > 1 ? 's' : ''} vencida${resumen.vencidas > 1 ? 's' : ''}. ¡Revisa tu lista!`;
+    } else {
+        alertVencidas.style.display = 'none';
+    }
+
+    // Alerta de tareas por vencer
+    const alertPorVencer = document.getElementById('alert-por-vencer');
+    if (resumen.porVencer > 0) {
+        alertPorVencer.style.display = 'flex';
+        alertPorVencer.querySelector('.alert-text').textContent = 
+            `${resumen.porVencer} tarea${resumen.porVencer > 1 ? 's' : ''} vencerá${resumen.porVencer > 1 ? 'n' : ''} en los próximos 7 días.`;
+    } else {
+        alertPorVencer.style.display = 'none';
+    }
+}

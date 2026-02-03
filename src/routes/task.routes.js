@@ -6,17 +6,22 @@ const {
   obtenerMisTareas,
   obtenerTareaPorId,
   actualizarTarea,
-  eliminarTarea
+  eliminarTarea,
+  obtenerEstadisticas
 } = require('../controllers/task.controller');
 const { validarTarea } = require('../middleware/validation');
 const { verificarAutenticacion } = require('../middleware/auth');
 
 // Rutas públicas (solo lectura)
 router.get('/', obtenerTareas);
-router.get('/:id', obtenerTareaPorId);
 
 // Rutas protegidas (requieren autenticación)
+// IMPORTANTE: Las rutas específicas van ANTES de las rutas con parámetros dinámicos
 router.get('/mis-tareas/todas', verificarAutenticacion, obtenerMisTareas);
+router.get('/estadisticas/resumen', verificarAutenticacion, obtenerEstadisticas);
+
+// Rutas con parámetros dinámicos
+router.get('/:id', obtenerTareaPorId);
 router.post('/', verificarAutenticacion, validarTarea, crearTarea);
 router.put('/:id', verificarAutenticacion, validarTarea, actualizarTarea);
 router.delete('/:id', verificarAutenticacion, eliminarTarea);
