@@ -8,6 +8,7 @@ const { errorHandler, notFound } = require('./src/middleware/errorHandler');
 // Importar rutas
 const authRoutes = require('./src/routes/auth.routes');
 const taskRoutes = require('./src/routes/task.routes');
+const userRoutes = require('./src/routes/user.routes');
 
 // Crear aplicación Express
 const app = express();
@@ -42,6 +43,7 @@ app.get('/api', (req, res) => {
 // Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/tareas', taskRoutes);
+app.use('/api/usuarios', userRoutes);
 
 // Servir frontend en rutas no API
 app.get('*', (req, res) => {

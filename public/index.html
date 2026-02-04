@@ -100,6 +100,56 @@
             </div>
         </div>
 
+        <!-- Modal para Compartir Tarea -->
+        <div id="modalCompartir" class="modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>🤝 Compartir Tarea</h3>
+                    <button onclick="cerrarModalCompartir()" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-description">Ingresa el email del usuario con quien deseas compartir esta tarea:</p>
+                    <div class="form-group">
+                        <label for="emailColaborador">Email del colaborador</label>
+                        <input type="email" id="emailColaborador" placeholder="usuario@ejemplo.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="permisosColaborador">Permisos</label>
+                        <select id="permisosColaborador">
+                            <option value="leer">👁️ Solo Leer</option>
+                            <option value="editar">✏️ Editar</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button onclick="cerrarModalCompartir()" class="btn btn-secondary">Cancelar</button>
+                        <button onclick="compartirTarea()" class="btn btn-primary">🚀 Compartir</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Comentarios -->
+        <div id="modalComentarios" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>💬 Comentarios</h3>
+                    <button onclick="cerrarModalComentarios()" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Lista de comentarios -->
+                    <div id="lista-comentarios" class="comentarios-lista">
+                        <p class="loading">Cargando comentarios...</p>
+                    </div>
+                    
+                    <!-- Agregar comentario -->
+                    <div class="agregar-comentario">
+                        <textarea id="nuevo-comentario" placeholder="Escribe un comentario..." rows="3" maxlength="500"></textarea>
+                        <button onclick="agregarComentario()" class="btn btn-primary">💬 Comentar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal para crear/editar tarea -->
         <div id="modalTarea" class="modal">
             <div class="modal-content">
@@ -198,6 +248,12 @@
 
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -8,6 +8,10 @@ let tareasGlobales = [];
 let filtroEstadoActual = 'todas';
 let filtroCategoriaActual = 'todas';
 
+// Variables Firebase
+let messaging = null;
+let fcmToken = null;
+
 // Verificar autenticación al cargar la página
 window.addEventListener('DOMContentLoaded', () => {
     verificarAutenticacion();
@@ -155,6 +159,8 @@ function mostrarTareas(tareas) {
                 </div>
                 <div class="tarea-acciones">
                     <button onclick="editarTarea('${tarea._id}')" class="btn btn-small btn-editar">✏️ Editar</button>
+                    <button onclick="abrirModalCompartir('${tarea._id}')" class="btn btn-small btn-compartir">🤝 Compartir</button>
+                    <button onclick="abrirModalComentarios('${tarea._id}')" class="btn btn-small btn-comentar">💬 Comentarios</button>
                     <button onclick="eliminarTarea('${tarea._id}')" class="btn btn-small btn-eliminar">🗑️ Eliminar</button>
                 </div>
             </div>
@@ -756,15 +762,100 @@ window.onclick = function(event) {
 
 // ==================== NOTIFICACIONES ====================
 
-// Solicitar permiso para notificaciones
-function solicitarPermisoNotificaciones() {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                console.log('✅ Notificaciones habilitadas');
-                mostrarMensaje('🔔 Notificaciones habilitadas correctamente', 'success');
+// Solicitar permiso para notificaciones con Firebase
+async function solicitarPermisoNotificaciones() {
+    try {
+        // Verificar soporte de notificaciones
+        if (!('Notification' in window)) {
+            console.log('Este navegador no soporta notificaciones');
+            return;
+        }
+
+        // Inicializar Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        messaging = firebase.messaging();
+
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('✅ Service Worker registrado');
+
+            // Esperar a que el SW esté activo
+            await navigator.serviceWorker.ready;
+        }
+
+        // Solicitar permiso
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+            console.log('✅ Permiso de notificaciones concedido');
+            
+            // Obtener token FCM
+            try {
+                fcmToken = await messaging.getToken({ vapidKey: vapidKey });
+                console.log('✅ Token FCM obtenido:', fcmToken);
+                
+                // Guardar token en el servidor
+                await guardarTokenFCM(fcmToken);
+                
+                mostrarMensaje('🔔 Notificaciones móviles habilitadas', 'success');
+            } catch (error) {
+                console.error('Error al obtener token FCM:', error);
+                mostrarMensaje('⚠️ Error al configurar notificaciones móviles', 'error');
             }
+        } else if (permission === 'denied') {
+            console.log('❌ Permiso de notificaciones denegado');
+            mostrarMensaje('⚠️ Notificaciones bloqueadas. Habilítalas en la configuración del navegador.', 'error');
+        }
+
+        // Escuchar notificaciones en primer plano
+        messaging.onMessage((payload) => {
+            console.log('Notificación recibida en primer plano:', payload);
+            
+            // Mostrar notificación personalizada
+            const notificationTitle = payload.notification.title || 'Nueva notificación';
+            const notificationOptions = {
+                body: payload.notification.body || '',
+                icon: payload.notification.icon || '/icon-192x192.png',
+                badge: '/icon-72x72.png',
+                tag: 'tarea-notification'
+            };
+
+            if (Notification.permission === 'granted') {
+                new Notification(notificationTitle, notificationOptions);
+            }
+
+            // Actualizar UI si es necesario
+            cargarTareas();
+            cargarEstadisticas();
         });
+
+    } catch (error) {
+        console.error('Error al configurar notificaciones:', error);
+    }
+}
+
+// Guardar token FCM en el servidor
+async function guardarTokenFCM(token) {
+    try {
+        const authToken = obtenerToken();
+        const response = await fetch(`${API_URL}/usuarios/guardar-token-fcm`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ fcmToken: token })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            console.log('✅ Token FCM guardado en servidor');
+        }
+    } catch (error) {
+        console.error('Error al guardar token FCM:', error);
     }
 }
 
@@ -789,5 +880,163 @@ function enviarNotificacion(titulo, mensaje, icono = '📋') {
         setTimeout(() => {
             notification.close();
         }, 5000);
+    }
+}
+
+// ==================== COMPARTIR TAREAS ====================
+
+let tareaIdCompartir = null;
+
+// Abrir modal compartir
+function abrirModalCompartir(tareaId) {
+    tareaIdCompartir = tareaId;
+    const modal = document.getElementById('modalCompartir');
+    document.getElementById('emailColaborador').value = '';
+    document.getElementById('permisosColaborador').value = 'leer';
+    modal.classList.add('show');
+}
+
+// Cerrar modal compartir
+function cerrarModalCompartir() {
+    const modal = document.getElementById('modalCompartir');
+    modal.classList.remove('show');
+    tareaIdCompartir = null;
+}
+
+// Compartir tarea
+async function compartirTarea() {
+    if (!tareaIdCompartir) return;
+
+    const token = obtenerToken();
+    const emailColaborador = document.getElementById('emailColaborador').value;
+    const permisos = document.getElementById('permisosColaborador').value;
+
+    if (!emailColaborador) {
+        mostrarMensaje('Por favor ingresa un email', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/tareas/${tareaIdCompartir}/compartir`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ emailColaborador, permisos })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarMensaje(`✅ ${data.message}`, 'success');
+            enviarNotificacion('🤝 Tarea Compartida', data.message);
+            cerrarModalCompartir();
+            cargarTareas();
+        } else {
+            mostrarMensaje(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarMensaje('Error al compartir tarea', 'error');
+    }
+}
+
+// ==================== COMENTARIOS ====================
+
+let tareaIdComentarios = null;
+
+// Abrir modal comentarios
+async function abrirModalComentarios(tareaId) {
+    tareaIdComentarios = tareaId;
+    const modal = document.getElementById('modalComentarios');
+    modal.classList.add('show');
+    await cargarComentarios(tareaId);
+}
+
+// Cerrar modal comentarios
+function cerrarModalComentarios() {
+    const modal = document.getElementById('modalComentarios');
+    modal.classList.remove('show');
+    tareaIdComentarios = null;
+    document.getElementById('nuevo-comentario').value = '';
+}
+
+// Cargar comentarios
+async function cargarComentarios(tareaId) {
+    const token = obtenerToken();
+    const listaComentarios = document.getElementById('lista-comentarios');
+
+    try {
+        const response = await fetch(`${API_URL}/tareas/${tareaId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.data.tarea.comentarios) {
+            const comentarios = data.data.tarea.comentarios;
+            
+            if (comentarios.length === 0) {
+                listaComentarios.innerHTML = '<p class="loading">No hay comentarios aún. ¡Sé el primero en comentar!</p>';
+            } else {
+                listaComentarios.innerHTML = comentarios.map(comentario => {
+                    const fecha = new Date(comentario.fecha).toLocaleString('es-ES');
+                    const autorNombre = comentario.usuario?.nombre || 'Usuario';
+                    
+                    return `
+                        <div class="comentario-item">
+                            <div class="comentario-header">
+                                <span class="comentario-autor">👤 ${autorNombre}</span>
+                                <span class="comentario-fecha">${fecha}</span>
+                            </div>
+                            <div class="comentario-texto">${comentario.texto}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        listaComentarios.innerHTML = '<p class="loading">Error al cargar comentarios</p>';
+    }
+}
+
+// Agregar comentario
+async function agregarComentario() {
+    if (!tareaIdComentarios) return;
+
+    const token = obtenerToken();
+    const texto = document.getElementById('nuevo-comentario').value.trim();
+
+    if (!texto) {
+        mostrarMensaje('Por favor escribe un comentario', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/tareas/${tareaIdComentarios}/comentarios`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ texto })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarMensaje('✅ Comentario agregado', 'success');
+            document.getElementById('nuevo-comentario').value = '';
+            await cargarComentarios(tareaIdComentarios);
+        } else {
+            mostrarMensaje(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarMensaje('Error al agregar comentario', 'error');
     }
 }

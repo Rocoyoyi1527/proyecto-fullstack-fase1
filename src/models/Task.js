@@ -40,6 +40,40 @@ const taskSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  esCompartida: {
+    type: Boolean,
+    default: false
+  },
+  colaboradores: [{
+    usuario: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    permisos: {
+      type: String,
+      enum: ['leer', 'editar'],
+      default: 'leer'
+    },
+    agregadoEn: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  comentarios: [{
+    usuario: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    texto: {
+      type: String,
+      required: true,
+      maxlength: 500
+    },
+    fecha: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

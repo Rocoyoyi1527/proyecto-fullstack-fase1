@@ -26,6 +26,20 @@ const userSchema = new mongoose.Schema({
     enum: ['usuario', 'admin'],
     default: 'usuario'
   },
+  fcmTokens: [{
+    token: {
+      type: String,
+      required: true
+    },
+    dispositivo: {
+      type: String,
+      default: 'unknown'
+    },
+    fechaRegistro: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now
