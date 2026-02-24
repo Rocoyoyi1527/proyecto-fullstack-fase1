@@ -1,44 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../config/database');
 const { verificarAutenticacion } = require('../middleware/auth');
-const User = require('../models/User');
 
 // Guardar token FCM
 router.post('/guardar-token-fcm', verificarAutenticacion, async (req, res, next) => {
   try {
     const { fcmToken } = req.body;
-    
     if (!fcmToken) {
-      return res.status(400).json({
-        success: false,
-        message: 'Token FCM requerido'
-      });
+      return res.status(400).json({ success: false, message: 'Token FCM requerido' });
     }
 
-    const usuario = await User.findById(req.usuario._id);
-    
-    // Verificar si el token ya existe
-    const tokenExiste = usuario.fcmTokens.some(t => t.token === fcmToken);
-    
-    if (!tokenExiste) {
-      // Agregar nuevo token
-      usuario.fcmTokens.push({
-        token: fcmToken,
-        dispositivo: req.headers['user-agent'] || 'unknown',
-        fechaRegistro: new Date()
-      });
-      
-      await usuario.save();
-      
-      console.log(`✅ Token FCM guardado para usuario: ${usuario.email}`);
-    }
+    db.prepare(
+      'INSERT OR IGNORE INTO fcm_tokens (usuario_id, token, dispositivo) VALUES (?, ?, ?)'
+    ).run(req.usuario.id, fcmToken, req.headers['user-agent'] || 'unknown');
 
-    res.json({
-      success: true,
-      message: 'Token FCM guardado correctamente'
-    });
+    console.log(`✅ Token FCM guardado para usuario: ${req.usuario.email}`);
+    res.json({ success: true, message: 'Token FCM guardado correctamente' });
   } catch (error) {
-    console.error('Error al guardar token FCM:', error);
     next(error);
   }
 });
@@ -47,15 +26,8 @@ router.post('/guardar-token-fcm', verificarAutenticacion, async (req, res, next)
 router.delete('/eliminar-token-fcm', verificarAutenticacion, async (req, res, next) => {
   try {
     const { fcmToken } = req.body;
-    
-    const usuario = await User.findById(req.usuario._id);
-    usuario.fcmTokens = usuario.fcmTokens.filter(t => t.token !== fcmToken);
-    await usuario.save();
-
-    res.json({
-      success: true,
-      message: 'Token FCM eliminado'
-    });
+    db.prepare('DELETE FROM fcm_tokens WHERE usuario_id = ? AND token = ?').run(req.usuario.id, fcmToken);
+    res.json({ success: true, message: 'Token FCM eliminado' });
   } catch (error) {
     next(error);
   }

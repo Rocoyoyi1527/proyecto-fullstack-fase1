@@ -1,65 +1,89 @@
-const mongoose = require('mongoose');
+const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  nombre: {
-    type: String,
-    required: [true, 'El nombre es obligatorio'],
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, 'El email es obligatorio'],
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Por favor ingrese un email válido']
-  },
-  password: {
-    type: String,
-    required: [true, 'La contraseña es obligatoria'],
-    minlength: [6, 'La contraseña debe tener al menos 6 caracteres'],
-    select: false
-  },
-  rol: {
-    type: String,
-    enum: ['usuario', 'admin'],
-    default: 'usuario'
-  },
-  fcmTokens: [{
-    token: {
-      type: String,
-      required: true
-    },
-    dispositivo: {
-      type: String,
-      default: 'unknown'
-    },
-    fechaRegistro: {
-      type: Date,
-      default: Date.now
+// Helper: format user row for output
+function formatUser(row, includeFcmTokens = false) {
+  if (!row) return null;
+  const user = {
+    id: row.id,
+    nombre: row.nombre,
+    email: row.email,
+    rol: row.rol,
+    createdAt: row.created_at,
+    fcmTokens: []
+  };
+  if (row._include_password) user.password = row.password;
+  if (includeFcmTokens) {
+    user.fcmTokens = db.prepare(
+      'SELECT * FROM fcm_tokens WHERE usuario_id = ?'
+    ).all(row.id).map(t => ({
+      id: t.id,
+      token: t.token,
+      dispositivo: t.dispositivo,
+      fechaRegistro: t.fecha_registro
+    }));
+  }
+  user.compararPassword = async function(passwordIngresado) {
+    const pwRow = db.prepare('SELECT password FROM users WHERE id = ?').get(this.id);
+    return bcrypt.compare(passwordIngresado, pwRow.password);
+  };
+  user.save = async function() {
+    // Save fcmTokens changes
+    const existing = db.prepare('SELECT token FROM fcm_tokens WHERE usuario_id = ?').all(this.id).map(t => t.token);
+    const current = this.fcmTokens.map(t => t.token);
+    // Remove deleted tokens
+    for (const tok of existing) {
+      if (!current.includes(tok)) {
+        db.prepare('DELETE FROM fcm_tokens WHERE usuario_id = ? AND token = ?').run(this.id, tok);
+      }
     }
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+    // Add new tokens
+    const insert = db.prepare('INSERT OR IGNORE INTO fcm_tokens (usuario_id, token, dispositivo) VALUES (?, ?, ?)');
+    for (const t of this.fcmTokens) {
+      if (!existing.includes(t.token)) {
+        insert.run(this.id, t.token, t.dispositivo || 'unknown');
+      }
+    }
+  };
+  return user;
+}
 
-// Encriptar contraseña antes de guardar
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-  
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
+const User = {
+  async findOne({ email }, opts = {}) {
+    const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (!row) return null;
+    if (opts.includePassword) row._include_password = true;
+    return formatUser(row, true);
+  },
 
-// Método para comparar contraseñas
-userSchema.methods.compararPassword = async function(passwordIngresado) {
-  return await bcrypt.compare(passwordIngresado, this.password);
+  async findById(id, opts = {}) {
+    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    if (!row) return null;
+    if (opts.includePassword) row._include_password = true;
+    return formatUser(row, true);
+  },
+
+  // Chainable select for password (mimics mongoose .select('+password'))
+  findByIdWithPassword(id) {
+    return {
+      _id: id,
+      async exec() {
+        const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+        if (!row) return null;
+        row._include_password = true;
+        return formatUser(row, true);
+      }
+    };
+  },
+
+  async create({ nombre, email, password, rol = 'usuario' }) {
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(password, salt);
+    const result = db.prepare(
+      'INSERT INTO users (nombre, email, password, rol) VALUES (?, ?, ?, ?)'
+    ).run(nombre, email.toLowerCase().trim(), hashed, rol);
+    return formatUser(db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid), false);
+  }
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = User;

@@ -1,12 +1,8 @@
 const admin = require('firebase-admin');
-
-// Inicializar Firebase Admin
-// NOTA: Firebase Admin requiere credenciales. Por ahora lo dejamos sin inicializar
-// y las notificaciones solo funcionarán con las notificaciones web del navegador
+const db = require('../config/database');
 
 let firebaseInitialized = false;
 
-// Intentar inicializar Firebase
 try {
   if (process.env.FIREBASE_PROJECT_ID) {
     admin.initializeApp({
@@ -24,116 +20,58 @@ try {
   }
 } catch (error) {
   console.log('⚠️ Error al inicializar Firebase Admin:', error.message);
-  console.log('   Las notificaciones push funcionarán solo en el navegador abierto');
 }
 
-// Enviar notificación push a un usuario específico
 const enviarNotificacionPush = async (usuarioId, titulo, cuerpo, datos = {}) => {
+  if (!firebaseInitialized) {
+    return { success: false, message: 'Firebase no configurado' };
+  }
+
   try {
-    // Si Firebase no está inicializado, retornar sin error
-    if (!firebaseInitialized) {
-      console.log('⚠️ Firebase no configurado, usando solo notificaciones web');
-      return { success: false, message: 'Firebase no configurado - notificaciones web activas' };
-    }
+    const tokens = db.prepare('SELECT token FROM fcm_tokens WHERE usuario_id = ?').all(usuarioId);
+    if (!tokens.length) return { success: false, message: 'Usuario sin tokens FCM' };
 
-    const User = require('../models/User');
-    const usuario = await User.findById(usuarioId);
-    
-    if (!usuario || !usuario.fcmTokens || usuario.fcmTokens.length === 0) {
-      console.log(`ℹ️ Usuario ${usuarioId} no tiene tokens FCM registrados`);
-      return { success: false, message: 'Usuario sin tokens FCM' };
-    }
-
-    // Preparar mensaje
     const message = {
-      notification: {
-        title: titulo,
-        body: cuerpo
-      },
-      data: {
-        ...datos,
-        click_action: 'FLUTTER_NOTIFICATION_CLICK'
-      },
-      webpush: {
-        fcm_options: {
-          link: datos.url || '/'
-        }
-      }
+      notification: { title: titulo, body: cuerpo },
+      data: { ...datos, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+      webpush: { fcm_options: { link: datos.url || '/' } }
     };
 
-    // Enviar a todos los tokens del usuario
-    const resultados = [];
     const tokensInvalidos = [];
+    const resultados = [];
 
-    for (const tokenObj of usuario.fcmTokens) {
+    for (const { token } of tokens) {
       try {
-        const response = await admin.messaging().send({
-          ...message,
-          token: tokenObj.token
-        });
-        
-        resultados.push({
-          token: tokenObj.token,
-          success: true,
-          messageId: response
-        });
-        
-        console.log(`✅ Notificación push enviada a ${usuario.email}`);
+        const response = await admin.messaging().send({ ...message, token });
+        resultados.push({ token, success: true, messageId: response });
       } catch (error) {
-        console.error(`Error al enviar a token:`, error.code);
-        
-        // Si el token es inválido, marcarlo para eliminación
-        if (error.code === 'messaging/invalid-registration-token' ||
-            error.code === 'messaging/registration-token-not-registered') {
-          tokensInvalidos.push(tokenObj.token);
+        if (
+          error.code === 'messaging/invalid-registration-token' ||
+          error.code === 'messaging/registration-token-not-registered'
+        ) {
+          tokensInvalidos.push(token);
         }
-        
-        resultados.push({
-          token: tokenObj.token,
-          success: false,
-          error: error.code
-        });
+        resultados.push({ token, success: false, error: error.code });
       }
     }
 
-    // Eliminar tokens inválidos
     if (tokensInvalidos.length > 0) {
-      usuario.fcmTokens = usuario.fcmTokens.filter(
-        t => !tokensInvalidos.includes(t.token)
-      );
-      await usuario.save();
-      console.log(`🗑️ Eliminados ${tokensInvalidos.length} tokens inválidos`);
+      const del = db.prepare('DELETE FROM fcm_tokens WHERE usuario_id = ? AND token = ?');
+      tokensInvalidos.forEach(t => del.run(usuarioId, t));
     }
 
-    return {
-      success: true,
-      resultados,
-      tokensEliminados: tokensInvalidos.length
-    };
-
+    return { success: true, resultados, tokensEliminados: tokensInvalidos.length };
   } catch (error) {
-    console.error('Error en enviarNotificacionPush:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 };
 
-// Enviar notificación a múltiples usuarios
 const enviarNotificacionMasiva = async (usuarioIds, titulo, cuerpo, datos = {}) => {
   const resultados = [];
-  
-  for (const usuarioId of usuarioIds) {
-    const resultado = await enviarNotificacionPush(usuarioId, titulo, cuerpo, datos);
-    resultados.push({ usuarioId, ...resultado });
+  for (const id of usuarioIds) {
+    resultados.push({ usuarioId: id, ...await enviarNotificacionPush(id, titulo, cuerpo, datos) });
   }
-  
   return resultados;
 };
 
-module.exports = {
-  enviarNotificacionPush,
-  enviarNotificacionMasiva,
-  firebaseInitialized
-};
+module.exports = { enviarNotificacionPush, enviarNotificacionMasiva, firebaseInitialized };
