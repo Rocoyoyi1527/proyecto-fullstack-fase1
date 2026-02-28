@@ -3,13 +3,19 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
-// Initialize SQLite (runs synchronously on require)
 require('./src/config/database');
+require('./src/config/migrations');
 
 const { errorHandler, notFound } = require('./src/middleware/errorHandler');
 const authRoutes = require('./src/routes/auth.routes');
 const taskRoutes = require('./src/routes/task.routes');
 const userRoutes = require('./src/routes/user.routes');
+const chatRoutes = require('./src/routes/chat.routes');
+const invitationRoutes = require('./src/routes/invitation.routes');
+const subtaskRoutes = require('./src/routes/subtask.routes');
+const heartbeatRoutes = require('./src/routes/heartbeat.routes');
+
+const { iniciarCronJobs } = require('./src/services/cron.service');
 
 const app = express();
 
@@ -18,18 +24,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api', (req, res) => {
-  res.json({
-    success: true,
-    message: 'API de Gestión de Tareas Educativas',
-    version: '1.0.0',
-    endpoints: { auth: '/api/auth', tasks: '/api/tareas' }
-  });
-});
+app.get('/api', (req, res) => res.json({ success: true, message: 'TaskFlow API v1.0' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tareas', taskRoutes);
 app.use('/api/usuarios', userRoutes);
+app.use('/api', chatRoutes);
+app.use('/api', invitationRoutes);
+app.use('/api', subtaskRoutes);
+app.use('/api', heartbeatRoutes);
+
+const adminRoutes = require('./src/routes/admin.routes');
+app.use('/api', adminRoutes);
+
 
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
@@ -40,12 +47,12 @@ app.get('*', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
+iniciarCronJobs();
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📝 Entorno: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Frontend: http://localhost:${PORT}`);
-  console.log(`🔌 API: http://localhost:${PORT}/api\n`);
+  console.log(`📝 Entorno: ${process.env.NODE_ENV || 'development'}\n`);
 });
 
 module.exports = app;

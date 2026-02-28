@@ -9,6 +9,7 @@ function formatUser(row, includeFcmTokens = false) {
     nombre: row.nombre,
     email: row.email,
     rol: row.rol,
+    verificado: row.verificado === 1,
     createdAt: row.created_at,
     fcmTokens: []
   };
@@ -76,12 +77,12 @@ const User = {
     };
   },
 
-  async create({ nombre, email, password, rol = 'usuario' }) {
+  async create({ nombre, email, password, rol = 'usuario', verificado = 1 }) {
     const salt = await bcrypt.genSalt(10);
     const hashed = await bcrypt.hash(password, salt);
     const result = db.prepare(
-      'INSERT INTO users (nombre, email, password, rol) VALUES (?, ?, ?, ?)'
-    ).run(nombre, email.toLowerCase().trim(), hashed, rol);
+      'INSERT INTO users (nombre, email, password, rol, verificado) VALUES (?, ?, ?, ?, ?)'
+      ).run(nombre, email.toLowerCase().trim(), hashed, rol, verificado);
     return formatUser(db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid), false);
   }
 };

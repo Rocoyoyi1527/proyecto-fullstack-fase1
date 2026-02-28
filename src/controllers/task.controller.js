@@ -82,20 +82,25 @@ const eliminarTarea = async (req, res, next) => {
 
 const obtenerEstadisticas = async (req, res, next) => {
   try {
-    const todasLasTareas = await Task.find({ usuario_id: req.usuario.id });
+    // Tareas propias
+    const propias = await Task.find({ usuario_id: req.usuario.id });
+
+    // Tareas en las que es colaborador
+    const colaborativas = await Task.find({ collaborator_id: req.usuario.id });
+    // Unir sin duplicados
+    const ids = new Set(propias.map(t => t.id));
+    const todasLasTareas = [...propias, ...colaborativas.filter(t => !ids.has(t.id))];
 
     const porEstado = {
       pendiente: todasLasTareas.filter(t => t.estado === 'pendiente').length,
       en_progreso: todasLasTareas.filter(t => t.estado === 'en_progreso').length,
       completada: todasLasTareas.filter(t => t.estado === 'completada').length
     };
-
     const porPrioridad = {
       baja: todasLasTareas.filter(t => t.prioridad === 'baja').length,
       media: todasLasTareas.filter(t => t.prioridad === 'media').length,
       alta: todasLasTareas.filter(t => t.prioridad === 'alta').length
     };
-
     const porCategoria = {
       trabajo: todasLasTareas.filter(t => t.categoria === 'trabajo').length,
       estudio: todasLasTareas.filter(t => t.categoria === 'estudio').length,
@@ -122,9 +127,8 @@ const obtenerEstadisticas = async (req, res, next) => {
     const hace30Dias = new Date();
     hace30Dias.setDate(hace30Dias.getDate() - 30);
     const tareasRecientes = todasLasTareas.filter(t => new Date(t.createdAt) >= hace30Dias);
-
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const porDiaSemana = { Lunes: 0, Martes: 0, 'Miércoles': 0, Jueves: 0, Viernes: 0, 'Sábado': 0, Domingo: 0 };
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+    const porDiaSemana = { Lunes: 0, Martes: 0, Miercoles: 0, Jueves: 0, Viernes: 0, Sabado: 0, Domingo: 0 };
     tareasRecientes.forEach(t => { porDiaSemana[diasSemana[new Date(t.createdAt).getDay()]]++; });
 
     const tareasCompletadasPorSemana = [];
@@ -132,7 +136,7 @@ const obtenerEstadisticas = async (req, res, next) => {
       const ini = new Date(); ini.setDate(ini.getDate() - (i * 7 + 7));
       const fin = new Date(); fin.setDate(fin.getDate() - (i * 7));
       tareasCompletadasPorSemana.push({
-        semana: `Semana ${4 - i}`,
+        semana: `S${4 - i}`,
         completadas: todasLasTareas.filter(t =>
           t.estado === 'completada' &&
           new Date(t.updatedAt) >= ini && new Date(t.updatedAt) < fin
@@ -148,6 +152,8 @@ const obtenerEstadisticas = async (req, res, next) => {
       data: {
         resumen: {
           total: totalTareas,
+          propias: propias.length,
+          colaborativas: colaborativas.length,
           completadas: porEstado.completada,
           pendientes: porEstado.pendiente,
           enProgreso: porEstado.en_progreso,
@@ -248,7 +254,12 @@ const agregarComentario = async (req, res, next) => {
       }
     }
 
-    res.json({ success: true, message: 'Comentario agregado', data: { comentario: nuevoComentario } });
+    const comentarioPopulado = {
+    	...nuevoComentario,
+     	usuario: { id: req.usuario.id, nombre: req.usuario.nombre, email: req.usuario.email },
+    	fecha: new Date().toISOString()
+    };
+    res.json({ success: true, message: 'Comentario agregado', data: { comentario: comentarioPopulado } });
   } catch (error) {
     next(error);
   }
